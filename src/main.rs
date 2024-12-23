@@ -1,12 +1,21 @@
+use std::error::Error;
+use std::fs::File;
+use std::mem::take;
 use std::sync::Arc;
-use arrow::array::{Float64Array, Int32Array, Int64Array, RecordBatch, StringArray};
-use arrow::datatypes::{DataType, Field, Schema};
+use arrow::array::{Array, ArrayRef, Float64Array, Int32Array, RecordBatch, StringArray, UInt32Array};
+use arrow::compute::sort_to_indices;
+use arrow::csv;
+use arrow::csv::reader::Format;
+use arrow::csv::ReaderBuilder;
+use arrow::datatypes::{DataType, Field, Int16Type, Schema};
 use arrow::error::Result as ArrowResult;
 
 fn main() {
-    let primitive_array = array();
-    println!("{:?}", primitive_array);
-    complex_type().expect("Error happened");
+    //let primitive_array = array();
+    //println!("{:?}", primitive_array);
+    //complex_type().expect("Error is happened");
+    //reader_builder_example().expect("Error is happened");
+    sort_by_category(reader_builder());
 }
 
 fn array() -> Int32Array {
@@ -49,4 +58,42 @@ fn complex_type() -> ArrowResult<()> {
     println!("{:?}", batch);
 
     Ok(())
+}
+
+fn reader_builder_example() -> ArrowResult<()> {
+    let mut file = File::open("shopping_trends.csv")?;
+
+    let (schema, _) = Format::default().infer_schema(&mut file, Some(100))?;
+    let mut csv_builder = ReaderBuilder::new(Arc::new(schema)).build(file)?;
+
+    let batch = csv_builder.next().unwrap()?;
+
+    println!("{:?}", batch);
+
+    Ok(())
+
+}
+
+fn sort_by_category(batch: Result<RecordBatch, Box<dyn Error>>) -> UInt32Array {
+    //Получаем массив отсортированных индексов
+    let indices = sort_to_indices(batch
+                                      .unwrap()
+                                      .column(5), None, None);
+
+    println!("{:?}", indices);
+    indices.unwrap()
+}
+
+fn reader_builder() -> Result<RecordBatch, Box<dyn Error>> {
+    let mut file = File::open("shopping_trends.csv")?;
+
+    let (schema, _) = Format::default().infer_schema(&mut file, Some(100))?;
+    let mut csv_builder = ReaderBuilder::new(Arc::new(schema)).build(file)?;
+
+    let batch = csv_builder.next().unwrap()?;
+
+    println!("{:?}", batch);
+
+    Ok(batch)
+
 }
